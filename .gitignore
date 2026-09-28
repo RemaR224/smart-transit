@@ -9,3 +9,4 @@ simulator/
 report/*.docx
 report/*.pdf
 Claude outputs/
+*.drawio
