@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Transit Operations</title>
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f4f4f1; --surface: #fcfcfb; --border: #e3e2dd;
+    --text: #0b0b0b; --text-2: #52514e; --muted: #85847f;
+    --r1: #2a78d6; --r2: #eb6834; --r3: #1baf7a; --r4: #eda100;
+    --good: #0ca30c; --warning: #fab219; --critical: #d03b3b; --neutral: #9a9994;
+    --c-low: #86b6ef; --c-mod: #3987e5; --c-high: #1c5cab; --c-full: #0d366b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #111110; --surface: #1a1a19; --border: #2f2f2c;
+      --text: #ffffff; --text-2: #c3c2b7; --muted: #8d8c85;
+      --r1: #3987e5; --r2: #d95926; --r3: #199e70; --r4: #c98500;
+      --c-low: #184f95; --c-mod: #256abf; --c-high: #5598e7; --c-full: #9ec5f4;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; padding: 16px 20px 8px; }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { color: var(--text-2); }
+  .live { margin-left: auto; color: var(--text-2); font-size: 12px; display: flex; gap: 12px; align-items: center; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); display: inline-block; margin-right: 4px; }
+  .dot.off { background: var(--critical); }
+  main { padding: 8px 20px 24px; display: grid; gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .card h2 { font-size: 13px; font-weight: 600; margin: 0 0 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .kpi .label { color: var(--text-2); font-size: 12px; }
+  .kpi .value { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .kpi .note { color: var(--muted); font-size: 12px; }
+  .grid2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  #map { height: 420px; border-radius: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; color: var(--text-2); font-size: 12px; }
+  .sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .sd { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin-right: 6px; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border); }
+  #alerts { list-style: none; margin: 0; padding: 0; max-height: 440px; overflow: auto; }
+  #alerts li { border-bottom: 1px solid var(--border); padding: 8px 0; }
+  #alerts .t { color: var(--muted); font-size: 12px; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 1px 8px 1px 6px; border-radius: 999px; border: 1px solid var(--border); white-space: nowrap; color: var(--text); }
+  .badge i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-2); font-weight: 600; font-size: 12px; cursor: pointer; user-select: none; }
+  td.num, th.num { text-align: right; }
+  .bar { width: 70px; height: 6px; background: var(--border); border-radius: 3px; display: inline-block; vertical-align: middle; margin-right: 6px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; border-radius: 3px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  select { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .scroll { overflow-x: auto; }
+  .err { color: var(--critical); }
+  .empty { color: var(--muted); padding: 12px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Smart Transit Operations</h1>
+  <span class="sub">Live delay prediction &amp; crowd management &middot; Cranbourne, Frankston, Gippsland (Traralgon) &amp; Ballarat corridors</span>
+  <span class="live"><span id="status"><span class="dot off"></span>connecting&hellip;</span><span id="servedBy"></span><span id="updated"></span></span>
+</header>
+<main>
+  <section class="kpis">
+    <div class="card kpi"><div class="label">Vehicles reporting</div><div class="value" id="k-live">&ndash;</div><div class="note" id="k-live-n">&nbsp;</div></div>
+    <div class="card kpi"><div class="label">On time (in service)</div><div class="value" id="k-ontime">&ndash;</div><div class="note" id="k-ontime-n">&nbsp;</div></div>
+    <div class="card kpi"><div class="label">Major delays (&ge; 5 min)</div><div class="value" id="k-major">&ndash;</div><div class="note" id="k-major-n">&nbsp;</div></div>
+    <div class="card kpi"><div class="label">Crowded (high / full)</div><div class="value" id="k-crowd">&ndash;</div><div class="note" id="k-crowd-n">&nbsp;</div></div>
+    <div class="card kpi"><div class="label">End-to-end latency</div><div class="value" id="k-lat">&ndash;</div><div class="note" id="k-lat-n">&nbsp;</div></div>
+    <div class="card kpi"><div class="label">Messages processed</div><div class="value" id="k-msgs">&ndash;</div><div class="note" id="k-msgs-n">&nbsp;</div></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Network map</h2>
+      <div id="map"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="card">
+      <h2>Live alerts</h2>
+      <ul id="alerts"><li class="empty">No alerts yet. Alerts appear when a vehicle becomes 5+ min late or full.</li></ul>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Routes</h2>
+    <div class="scroll"><table id="routes"><thead><tr><th>Route</th><th>Mode</th><th class="num">Vehicles</th><th class="num">On time</th><th class="num">Avg delay</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Vehicles</h2>
+    <div class="toolbar">
+      <label>Route <select id="filter"><option value="">All routes</option></select></label>
+      <span class="sub" id="vcount"></span>
+    </div>
+    <div class="scroll">
+      <table id="vehicles">
+        <thead><tr>
+          <th data-k="vehicle_id">Vehicle</th><th data-k="route_id">Route</th><th data-k="next_stop">Next stop</th>
+          <th data-k="speed_kmh" class="num">Speed</th><th data-k="delay_seconds" class="num">Delay</th><th data-k="delay_status">Status</th>
+          <th data-k="smoothed_occupancy_pct">Crowding</th><th data-k="latency_ms" class="num">Latency</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script>
+const ROUTE_VARS = ['--r1', '--r2', '--r3', '--r4'];
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const STATUS = {
+  on_time: { label: 'On time', v: '--good' }, early: { label: 'Early', v: '--good' },
+  minor_delay: { label: 'Minor delay', v: '--warning' }, major_delay: { label: 'Major delay', v: '--critical' },
+  layover: { label: 'Layover', v: '--neutral' },
+};
+const CROWD = { low: { label: 'Low', v: '--c-low' }, moderate: { label: 'Moderate', v: '--c-mod' }, high: { label: 'High', v: '--c-high' }, full: { label: 'Full', v: '--c-full' } };
+let routes = [], routeColor = {}, routeName = {}, map = null, markers = {}, vehicles = [], sortKey = 'vehicle_id', sortDir = 1;
+
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const badge = (def) => def ? `<span class="badge"><i style="background:${css(def.v)}"></i>${def.label}</span>` : '';
+const fmtDelay = (s) => { if (s == null) return '–'; const m = Math.round(s / 60); return m === 0 ? '0 min' : (m > 0 ? `+${m} min` : `${m} min`); };
+
+async function init() {
+  routes = await (await fetch('/api/routes')).json();
+  if (window.L) {
+  map = L.map('map', { scrollWheelZoom: false });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 16, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  }
+  const all = [];
+  const legend = document.getElementById('legend');
+  const filter = document.getElementById('filter');
+  routes.forEach((r, i) => {
+    const color = css(ROUTE_VARS[i % 4]);
+    routeColor[r.route_id] = color; routeName[r.route_id] = r.route_name;
+    const pts = r.stops.map((s) => [s.lat, s.lon]); all.push(...pts);
+    if (map) {
+      L.polyline(pts, { color, weight: 3, opacity: .85 }).addTo(map).bindTooltip(r.route_name);
+      r.stops.forEach((s) => L.circleMarker([s.lat, s.lon], { radius: 3, color, weight: 1, fillColor: css('--surface'), fillOpacity: 1 }).addTo(map).bindTooltip(s.name));
+    }
+    legend.insertAdjacentHTML('beforeend', `<span><span class="sw" style="background:${color}"></span>${esc(r.route_name)}</span>`);
+    filter.insertAdjacentHTML('beforeend', `<option value="${r.route_id}">${esc(r.route_name)}</option>`);
+  });
+  legend.insertAdjacentHTML('beforeend', Object.entries({ on_time: 1, minor_delay: 1, major_delay: 1, layover: 1 })
+    .map(([k]) => `<span><span class="sd" style="background:${css(STATUS[k].v)}"></span>${STATUS[k].label}</span>`).join(''));
+  if (map) map.fitBounds(all, { padding: [20, 20] });
+  filter.onchange = renderTable;
+  document.querySelectorAll('#vehicles th').forEach((th) => th.onclick = () => {
+    const k = th.dataset.k; sortDir = sortKey === k ? -sortDir : 1; sortKey = k; renderTable();
+  });
+  poll();
+  setInterval(poll, 3000);
+}
+
+async function poll() {
+  const st = document.getElementById('status');
+  try {
+    const [vRes, aRes] = await Promise.all([fetch('/api/vehicles'), fetch('/api/alerts')]);
+    const v = await vRes.json(); const a = await aRes.json();
+    if (v.error) throw new Error(v.error);
+    vehicles = v.vehicles; renderKpis(v.summary); renderMap(); renderTable(); renderRoutes(v.summary.per_route); renderAlerts(a.alerts);
+    st.innerHTML = '<span class="dot"></span>live';
+    document.getElementById('servedBy').textContent = `served by ${vRes.headers.get('X-Served-By') || v.served_by}`;
+    document.getElementById('updated').textContent = `updated ${new Date().toLocaleTimeString()}`;
+  } catch (e) {
+    st.innerHTML = `<span class="dot off"></span><span class="err">${esc(e.message)}</span>`;
+  }
+}
+
+function renderKpis(s) {
+  const set = (id, v, n) => { document.getElementById(id).textContent = v; if (n !== undefined) document.getElementById(id + '-n').textContent = n; };
+  set('k-live', s.vehicles_live, `${s.delay.layover} on layover`);
+  set('k-ontime', s.on_time_pct == null ? '–' : `${s.on_time_pct}%`, `${s.delay.minor_delay} minor delay`);
+  set('k-major', s.delay.major_delay, 'alerts sent to commuters');
+  set('k-crowd', s.crowd.high + s.crowd.full, `${s.crowd.full} full, ${s.crowd.high} high`);
+  set('k-lat', s.latency_ms.p50 == null ? '–' : `${s.latency_ms.p50} ms`, s.latency_ms.p95 == null ? '' : `median · p95 ${s.latency_ms.p95} ms`);
+  set('k-msgs', s.messages_processed.toLocaleString(), `${s.missed_messages} missed`);
+}
+
+function renderMap() {
+  if (!map) return;
+  const seen = new Set();
+  vehicles.forEach((v) => {
+    seen.add(v.vehicle_id);
+    const fill = css((STATUS[v.delay_status] || STATUS.layover).v);
+    const tip = `<b>${esc(v.vehicle_id)}</b> · ${esc(routeName[v.route_id] || v.route_id)}<br>Next: ${esc(v.next_stop)} (${v.distance_to_next_stop_km} km)<br>`
+      + `${(STATUS[v.delay_status] || {}).label || v.delay_status} ${fmtDelay(v.delay_seconds)} · crowd ${esc(v.crowd_level)} (${Math.round(v.smoothed_occupancy_pct)}%)<br>${v.speed_kmh} km/h`;
+    if (!markers[v.vehicle_id]) {
+      markers[v.vehicle_id] = L.circleMarker([v.lat, v.lon], { radius: 7, weight: 2, color: css('--surface'), fillOpacity: 1 }).addTo(map).bindTooltip('');
+    }
+    markers[v.vehicle_id].setLatLng([v.lat, v.lon]).setStyle({ fillColor: fill }).setTooltipContent(tip);
+  });
+  Object.keys(markers).forEach((id) => { if (!seen.has(id)) { map.removeLayer(markers[id]); delete markers[id]; } });
+}
+
+function renderTable() {
+  const f = document.getElementById('filter').value;
+  const rows = vehicles.filter((v) => !f || v.route_id === f).sort((a, b) => {
+    const x = a[sortKey], y = b[sortKey];
+    return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y))) * sortDir;
+  });
+  document.getElementById('vcount').textContent = `${rows.length} vehicle(s)`;
+  document.querySelector('#vehicles tbody').innerHTML = rows.map((v) => {
+    const c = CROWD[v.crowd_level];
+    const occ = Math.round(v.smoothed_occupancy_pct ?? v.occupancy_pct);
+    return `<tr>
+      <td><span class="sw" style="background:${routeColor[v.route_id]}"></span>${esc(v.vehicle_id)}</td>
+      <td>${esc(routeName[v.route_id] || v.route_id)}</td>
+      <td>${esc(v.next_stop)} <span class="sub">${v.distance_to_next_stop_km} km</span></td>
+      <td class="num">${v.speed_kmh} km/h</td>
+      <td class="num">${v.delay_status === 'layover' ? '–' : fmtDelay(v.delay_seconds)}</td>
+      <td>${badge(STATUS[v.delay_status])}</td>
+      <td><span class="bar"><span style="width:${occ}%;background:${c ? css(c.v) : 'gray'}"></span></span>${c ? c.label : ''} ${occ}%</td>
+      <td class="num">${v.latency_ms} ms</td></tr>`;
+  }).join('') || '<tr><td colspan="8" class="empty">No vehicles yet. Start the simulator.</td></tr>';
+}
+
+function renderRoutes(perRoute) {
+  document.querySelector('#routes tbody').innerHTML = perRoute.map((r) => {
+    const route = routes.find((x) => x.route_id === r.route_id) || {};
+    return `<tr><td><span class="sw" style="background:${routeColor[r.route_id]}"></span>${esc(r.route_name)}</td><td>${esc(route.mode)}</td>
+      <td class="num">${r.vehicles}</td><td class="num">${r.on_time_pct == null ? '–' : r.on_time_pct + '%'}</td>
+      <td class="num">${r.avg_delay_s == null ? '–' : fmtDelay(r.avg_delay_s)}</td></tr>`;
+  }).join('');
+}
+
+function renderAlerts(list) {
+  if (!list.length) return;
+  document.getElementById('alerts').innerHTML = list.map((a) => {
+    const def = a.type === 'DELAY' ? { label: 'Delay', v: '--critical' } : { label: 'Crowding', v: '--c-full' };
+    return `<li>${badge(def)} <span class="t">${new Date(a.at).toLocaleTimeString()}</span><div>${esc(a.message)}</div></li>`;
+  }).join('');
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+node_modules/
+certs/
+*.pem
+*.crt
+*.key
+aws-credentials*
+*.zip
+simulator/
+report/*.docx
+report/*.pdf

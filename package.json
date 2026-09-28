@@ -1,0 +1,23 @@
+{
+  "name": "smart-transit",
+  "version": "0.2.0",
+  "description": "Smart Transit: Real-Time Delay Prediction & Crowd Management (SIT314 Distinction project)",
+  "main": "simulator.js",
+  "scripts": {
+    "start": "node simulator.js",
+    "test": "node test/local-test.js",
+    "test:processing": "node test/processing-test.mjs",
+    "test:pipeline": "node test/pipeline-test.mjs",
+    "dashboard": "node dashboard/server.js --cert=certs/device.cert.pem --key=certs/device.private.key --ca=certs/AmazonRootCA1.pem"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1141.0",
+    "@aws-sdk/client-iot-data-plane": "^3.1141.0",
+    "@aws-sdk/lib-dynamodb": "^3.1141.0",
+    "leaflet": "^1.9.4",
+    "mqtt": "^5.10.1"
+  },
+  "devDependencies": {
+    "aedes": "^0.51.3"
+  }
+}
