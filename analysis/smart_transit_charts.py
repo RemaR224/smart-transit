@@ -6,7 +6,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
-# ---------------------------------------------------------------- load data
+
 # Reads the CSV files you already uploaded to the Colab Files panel (/content).
 # On your own computer it reads the results/ folder instead.
 folder = '/content' if os.path.isdir('/content') else 'results'
@@ -32,7 +32,7 @@ def metric(pipeline, key):
     rows = {int(r['vehicles']): float(r[key]) for r in summary if r['pipeline'] == pipeline}
     return np.array([rows[v] for v in LOADS])
 
-# ---------------------------------------------------------------- style
+
 font = 'Liberation Serif' if any('Liberation Serif' in f.name for f in font_manager.fontManager.ttflist) else 'serif'
 plt.rcParams.update({
     'font.family': font, 'font.size': 11,
@@ -70,7 +70,7 @@ def bars(ax, before, after, fmt, pad):
 def save(fig, name):
     fig.savefig(name); saved.append(name); plt.close(fig)
 
-# ---------------------------------------------------------------- Fig 1: throughput
+
 fig, ax = plt.subplots(figsize=(8, 4.8))
 bars(ax, metric('baseline', 'throughput_msg_s'), metric('lambda', 'throughput_msg_s'),
      lambda v: f'{v:.0f}', 3)
@@ -82,7 +82,7 @@ title(ax, 'Throughput: the single server stops scaling at about 100 msg/s',
 ax.legend(loc='upper left', fontsize=10)
 save(fig, 'fig1_throughput.png')
 
-# ---------------------------------------------------------------- Fig 2: message loss
+
 fig, ax = plt.subplots(figsize=(8, 4.8))
 bars(ax, metric('baseline', 'loss_pct'), metric('lambda', 'loss_pct'),
      lambda v: f'{v:g}%', 1)
@@ -93,7 +93,7 @@ title(ax, 'Message loss: 47% of messages lost by the single server at 200 vehicl
 ax.legend(loc='upper left', fontsize=10)
 save(fig, 'fig2_message_loss.png')
 
-# ---------------------------------------------------------------- Fig 3: latency (two panels, no overlap)
+
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), sharey=True)
 for ax, key, name in [(axes[0], 'latency_p50_ms', 'Median (p50)'),
                       (axes[1], 'latency_p95_ms', '95th percentile (p95)')]:
@@ -114,7 +114,7 @@ fig.text(0.01, -0.12, 'Latency = time from the vehicle sending a message (Melbou
 fig.tight_layout(rect=(0, 0, 1, 0.95))
 save(fig, 'fig3_latency.png')
 
-# ---------------------------------------------------------------- Fig 4: 200-vehicle timeline
+
 def timeseries(prefix):
     text = find(prefix)
     if text is None:
@@ -144,7 +144,7 @@ if tb and tl:
 else:
     print('Skipped Fig 4: upload base-200-timeseries.csv and lambda-200-timeseries.csv to include it.')
 
-# ---------------------------------------------------------------- Fig 5: improvement summary at 200
+
 b = {k: metric('baseline', k)[-1] for k in ['throughput_msg_s', 'loss_pct', 'latency_p50_ms', 'latency_p95_ms', 'latency_p99_ms']}
 a = {k: metric('lambda', k)[-1] for k in b}
 cards = [
@@ -166,7 +166,7 @@ fig.suptitle('Improvement at 200 vehicles: single server → AWS Lambda', x=0.01
 fig.tight_layout(rect=(0, 0, 1, 0.93))
 save(fig, 'fig5_improvement_summary.png')
 
-# ---------------------------------------------------------------- show + download
+
 print('Saved:', ', '.join(saved))
 if IN_COLAB:
     from IPython.display import Image, display
