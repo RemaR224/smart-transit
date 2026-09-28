@@ -8,3 +8,4 @@ aws-credentials*
 simulator/
 report/*.docx
 report/*.pdf
+Claude outputs/
