@@ -67,5 +67,7 @@ Each test sent 1 message per vehicle per second for 2 minutes.
 |---|---|---|
 | 100 | 97 msg/s, 0% lost, p95 1.61 s | 98 msg/s, 0.02% lost, p95 1.03 s |
 | 200 | 103 msg/s, 47.2% lost, p95 3.68 s | 195 msg/s, 0% lost, p95 1.11 s |
+| 500 | not run | 480 msg/s, 0.16% lost, p95 1.27 s |
+| 1,000 | not run | 915 msg/s, 7.04% lost, p95 4.54 s (throttled for 35 s while scaling out, then ~1,000 msg/s at 0.8 s) |
 
 Full results are in `results/summary.csv`.
