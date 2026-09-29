@@ -1,0 +1,9 @@
+mode,vehicles,raw_messages,upstream_messages,upstream_msg_s,records_to_cloud,message_reduction_pct,upstream_kb_s,cloud_latency_p50_ms,cloud_latency_p95_ms,alert_latency_p50_ms,alert_latency_p95_ms,status_accuracy_pct,crowd_accuracy_pct,delay_error_p95_s,staleness_p95_s,edge_cpu_pct,edge_rss_mb,edge_avg_proc_ms,local_alerts
+passthrough,200,23792,23792,198.3,23792,0,99.2,2,4,,,100,100,0,1,3.8,45.4,0,0
+edge,200,23856,119,1,2277,99.5,6.4,523,968,1,14,98.68,98.77,47,27.7,2.7,72,0.0305,82
+passthrough,500,59633,59633,496.9,59633,0,248.6,4,9,,,100,100,0,1,6.2,58,0,0
+edge,500,59689,121,1,5590,99.8,15.7,507,955,2,13,99.05,99.17,43,27.5,4.3,87.7,0.0208,205
+passthrough,1000,119266,119266,993.9,119266,0,498.3,2,4,,,100,100,0,1,9.7,61.5,0,0
+edge,1000,119092,125,1,11452,99.9,32,515,974,2,3,98.45,98.56,50,27.6,9.6,94.2,0.0253,413
+passthrough,2000,237816,237816,1981.8,237816,0,995.4,6,9,,,100,100,0,1,12.5,63,0,0
+edge,2000,238266,135,1.1,24270,99.94,68,524,973,7,14,98.59,98.79,51,27.6,12,141.1,0.0188,878

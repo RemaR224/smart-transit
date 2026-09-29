@@ -1,0 +1,4 @@
+gateways,vehicles,vehicles_per_gateway,raw_messages,cloud_messages,cloud_msg_s,records_to_cloud,records_s,cloud_kb_s,max_gateway_cpu_pct,avg_gateway_cpu_pct,max_gateway_rss_mb,reduction_pct,fail_sec,restart_sec,healthy_batches_s_before,healthy_batches_s_during,failed_depot_batches_during,recovery_s
+1,4000,4000,474957,245,2.04,47298,394.1,138.6,26.6,26.6,142.1,99.95,,,,,,
+2,4000,2000,475826,256,2.13,44361,369.7,130.1,19.2,19.2,140.7,99.95,41,61,1.2,1,0,1
+4,4000,1000,476021,479,3.99,44575,371.5,130.2,14.8,14.2,137.6,99.9,41,61,1.05,1,0,2

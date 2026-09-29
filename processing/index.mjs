@@ -2,7 +2,7 @@
 // DynamoDB storage and alerts. Deployed as the Lambda function transit-processor.
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { IoTDataPlaneClient, PublishCommand } from '@aws-sdk/client-iot-data-plane';
 
 // Tunable settings
@@ -219,7 +219,42 @@ async function publishAlert(alert) {
   }
 }
 
+// HD edge design: the edge gateway sends one batch per second containing only
+// the vehicles whose state changed significantly. The records are already
+// processed at the edge, so the cloud only stores them (25 items per write).
+export async function handleEdgeBatch(batch) {
+  const startedMs = Date.now();
+  const records = batch.records || [];
+  const latest = new Map(); // one row per vehicle
+  const items = [];
+  for (const r of records) {
+    latest.set(r.vehicle_id, r);
+    items.push({ TableName: HISTORY_TABLE, Item: { ...r, ts: r.sent_at_ms, pipeline: 'edge' } });
+  }
+  for (const r of latest.values()) items.push({ TableName: STATE_TABLE, Item: { ...r, updated_at_ms: startedMs, pipeline: 'edge' } });
+  for (let i = 0; i < items.length; i += 25) {
+    let RequestItems = {};
+    for (const { TableName, Item } of items.slice(i, i + 25)) (RequestItems[TableName] ||= []).push({ PutRequest: { Item } });
+    for (let attempt = 0; attempt < 3 && Object.keys(RequestItems).length; attempt += 1) {
+      const res = await ddb.send(new BatchWriteCommand({ RequestItems }));
+      RequestItems = res.UnprocessedItems || {}; // retry
+    }
+  }
+  for (const a of batch.alerts || []) console.log(JSON.stringify({ level: 'info', event: 'edge_alert', ...a }));
+  const latencies = records.map((r) => startedMs - r.sent_at_ms);
+  if (process.env.LOG_METRICS !== 'false') console.log(JSON.stringify({
+    _aws: { Timestamp: Date.now(), CloudWatchMetrics: [{ Namespace: 'SmartTransit', Dimensions: [['Pipeline']],
+      Metrics: [{ Name: 'RecordsPerBatch', Unit: 'Count' }, { Name: 'BatchProcessingTime', Unit: 'Milliseconds' },
+        { Name: 'EdgeToCloudLatency', Unit: 'Milliseconds' }] }] },
+    Pipeline: 'edge', gateway: batch.gateway, RecordsPerBatch: records.length,
+    BatchProcessingTime: Date.now() - startedMs,
+    EdgeToCloudLatency: latencies.length ? Math.max(...latencies) : 0,
+  }));
+  return { stored: records.length };
+}
+
 export const handler = async (event) => {
+  if (event && Array.isArray(event.records)) return handleEdgeBatch(event);
   const messages = Array.isArray(event) ? event : [event];
   const results = [];
   for (const m of messages) results.push(await handleMessage(m));

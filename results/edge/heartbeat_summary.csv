@@ -1,0 +1,4 @@
+mode,vehicles,raw_messages,upstream_messages,upstream_msg_s,records_to_cloud,message_reduction_pct,upstream_kb_s,cloud_latency_p50_ms,cloud_latency_p95_ms,alert_latency_p50_ms,alert_latency_p95_ms,status_accuracy_pct,crowd_accuracy_pct,delay_error_p95_s,staleness_p95_s,edge_cpu_pct,edge_rss_mb,edge_avg_proc_ms,local_alerts
+edge-hb10,500,59460,123,1,8988,99.79,24.9,514,975,0,2,98.41,98.6,51,10.3,5.8,85.4,0.0301,220
+edge-hb30,500,59432,121,1,6243,99.8,17.5,515,955,1,12,98.32,98.62,55,27.6,6,85.5,0.0308,240
+edge-hb60,500,59492,121,1,5198,99.8,14.6,519,968,4,7,98.39,98.58,52,48.9,5.5,85.7,0.0301,193

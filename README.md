@@ -71,3 +71,22 @@ Each test sent 1 message per vehicle per second for 2 minutes.
 | 1,000 | not run | 915 msg/s, 7.04% lost, p95 4.54 s (throttled for 35 s while scaling out, then ~1,000 msg/s at 0.8 s) |
 
 Full results are in `results/summary.csv`.
+
+## Edge (fog) gateway (HD task)
+
+The edge gateway processes telemetry near the vehicles, raises alerts locally and
+sends only significant changes to the cloud, batched once per second.
+
+```
+node edge/edge-gateway.mjs --broker=mqtt://localhost:1883 --mode=edge
+```
+
+Experiments (no AWS needed; results are written to `results/edge/`):
+
+```
+node edge/run-experiment.mjs --vehicles=200,500,1000,2000 --durationMs=120000
+node edge/run-experiment.mjs --vehicles=500 --modes=edge-hb10,edge-hb30,edge-hb60 --out=heartbeat_summary.csv
+node edge/outage-test.mjs --vehicles=500 --durationMs=90000 --outageFromS=30 --outageS=30
+python analysis/edge_charts.py
+```
+
